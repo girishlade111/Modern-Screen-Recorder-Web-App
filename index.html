@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProScreen Recorder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            color: #f5f5f7;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(19, 25, 39, 0.88);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 860px;
+            padding: 40px 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #a0aec0;
+            font-size: 1.05rem;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+        .preview-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .preview-container {
+            background: #0f111a;
+            border-radius: 14px;
+            overflow: hidden;
+            aspect-ratio: 16/9;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #previewVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #050714;
+        }
+
+        .placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+            text-align: center;
+            color: #718096;
+        }
+
+        .placeholder i {
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            color: #3182ce;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #startBtn {
+            background: linear-gradient(90deg, #0ba360, #3cba92);
+            color: white;
+        }
+
+        #stopBtn {
+            background: linear-gradient(90deg, #ff416c, #ff4b2b);
+            color: white;
+        }
+
+        #downloadBtn {
+            background: linear-gradient(90deg, #2193b0, #6dd5ed);
+            color: white;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        .settings {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .setting-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #2d3748;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #cbd5e0;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+            background-color: white;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            height: 24px;
+            font-weight: 500;
+        }
+
+        #timer {
+            font-family: 'Consolas', monospace;
+            font-size: 1.2rem;
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 5px 15px;
+            border-radius: 30px;
+        }
+
+        .recording-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background-color: #ff416c;
+            border-radius: 50%;
+            animation: pulse-animation 1.2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.8; }
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .controls {
+                flex-wrap: wrap;
+            }
+            
+            .btn {
+                flex: 1;
+                padding: 12px;
+                font-size: 0.95rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ProScreen Recorder</h1>
+            <p class="subtitle">Capture your screen in high quality with audio. Modern, secure, and completely browser-based.</p>
+        </header>
+        
+        <section class="preview-section">
+            <div class="preview-container">
+                <video id="previewVideo" autoplay muted></video>
+                <div class="placeholder" id="previewPlaceholder">
+                    <i>🔴</i>
+                    <h3>Screen Preview</h3>
+                    <p>Your screen will appear here once recording starts</p>
+                </div>
+            </div>
+            
+            <div class="status">
+                <div id="statusText">Ready to record</div>
+                <div id="timer" style="display: none;">
+                    <span class="recording-indicator">
+                        <span class="pulse"></span>
+                        Recording
+                    </span> 
+                    <span id="timeDisplay">00:00</span>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="startBtn" class="btn">
+                    <span>●</span> Start Recording
+                </button>
+                <button id="stopBtn" class="btn" disabled>
+                    <span>■</span> Stop Recording
+                </button>
+                <button id="downloadBtn" class="btn" disabled>
+                    <span>↓</span> Download
+                </button>
+            </div>
+            
+            <div class="settings">
+                <label class="setting-option">
+                    <span>Capture System Audio</span>
+                    <label class="switch">
+                        <input type="checkbox" id="systemAudioToggle">
+                        <span class="slider"></span>
+                    </label>
+                </label>
+                
+                <label class="setting-option">
+                    <span>Capture Microphone</span>
+                    <label class="switch">
+                        <input type="checkbox" id="microphoneToggle">
+                        <span class="slider"></span>
+                    </label>
+                </label>
+            </div>
+        </section>
+        
+        <div class="footer">
+            <p>Note: Screen recording requires HTTPS connection. All processing happens locally in your browser.</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoPreview = document.getElementById('previewVideo');
+            const previewPlaceholder = document.getElementById('previewPlaceholder');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const timerDisplay = document.getElementById('timeDisplay');
+            const timerContainer = document.getElementById('timer');
+            const statusText = document.getElementById('statusText');
+            const systemAudioToggle = document.getElementById('systemAudioToggle');
+            const microphoneToggle = document.getElementById('microphoneToggle');
+            
+            let mediaRecorder;
+            let recordedChunks = [];
+            let timerInterval;
+            let seconds = 0;
+            let stream;
+            
+            // Update timer display
+            function updateTimer() {
+                seconds++;
+                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                timerDisplay.textContent = `${mins}:${secs}`;
+            }
+            
+            // Start screen recording
+            async function startRecording() {
+                try {
+                    // Get system audio if enabled
+                    const audioConstraints = {};
+                    if (systemAudioToggle.checked) {
+                        audioConstraints.audio = {
+                            autoGainControl: false,
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            sampleRate: 48000
+                        };
+                    }
+                    
+                    // Get microphone if enabled
+                    if (microphoneToggle.checked) {
+                        audioConstraints.audio = audioConstraints.audio || {};
+                        audioConstraints.audio.deviceId = 'default';
+                    }
+                    
+                    // Get screen capture
+                    stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { cursor: "always" },
+                        ...audioConstraints
+                    });
+                    
+                    // Show preview
+                    videoPreview.srcObject = stream;
+                    previewPlaceholder.style.display = 'none';
+                    
+                    // Initialize MediaRecorder
+                    recordedChunks = [];
+                    mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: 'video/webm;codecs=vp9',
+                        videoBitsPerSecond: 5000000
+                    });
+                    
+                    // Collect data
+                    mediaRecorder.ondataavailable = e => {
+                        if (e.data.size > 0) {
+                            recordedChunks.push(e.data);
+                        }
+                    };
+                    
+                    // Start recording
+                    mediaRecorder.start(100);
+                    
+                    // Update UI
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    downloadBtn.disabled = true;
+                    systemAudioToggle.disabled = true;
+                    microphoneToggle.disabled = true;
+                    timerContainer.style.display = 'block';
+                    statusText.textContent = 'Recording in progress...';
+                    
+                    // Start timer
+                    seconds = 0;
+                    timerInterval = setInterval(updateTimer, 1000);
+                    updateTimer();
+                    
+                    // Handle when user stops via browser controls
+                    stream.getVideoTracks()[0].onended = () => {
+                        stopRecording();
+                    };
+                } catch (err) {
+                    console.error('Error starting recording:', err);
+                    statusText.textContent = 'Error: ' + err.message;
+                }
+            }
+            
+            // Stop recording
+            function stopRecording() {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                    clearInterval(timerInterval);
+                    
+                    // Stop all tracks
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    // Update UI
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    downloadBtn.disabled = false;
+                    systemAudioToggle.disabled = false;
+                    microphoneToggle.disabled = false;
+                    statusText.textContent = 'Recording complete!';
+                    
+                    // Reset preview
+                    videoPreview.srcObject = null;
+                    previewPlaceholder.style.display = 'flex';
+                }
+            }
+            
+            // Download the recording
+            function downloadRecording() {
+                if (recordedChunks.length === 0) {
+                    alert('No recording available to download');
+                    return;
+                }
+                
+                const blob = new Blob(recordedChunks, {
+                    type: 'video/webm'
+                });
+                
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `screen-recording-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            }
+            
+            // Event listeners
+            startBtn.addEventListener('click', startRecording);
+            stopBtn.addEventListener('click', stopRecording);
+            downloadBtn.addEventListener('click', downloadRecording);
+            
+            // Initialize UI state
+            stopBtn.disabled = true;
+            downloadBtn.disabled = true;
+        });
+    </script>
+</body>
+</html>
