@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProScreen Recorder</title>
+    <title>ProScreen Recorder with Pause/Resume</title>
     <style>
         * {
             margin: 0;
@@ -102,8 +102,9 @@
         .controls {
             display: flex;
             justify-content: center;
-            gap: 15px;
+            gap: 10px;
             margin-top: 10px;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -127,6 +128,11 @@
 
         #startBtn {
             background: linear-gradient(90deg, #0ba360, #3cba92);
+            color: white;
+        }
+
+        #pauseResumeBtn {
+            background: linear-gradient(90deg, #ff9a3d, #ff6a00);
             color: white;
         }
 
@@ -241,6 +247,14 @@
             animation: pulse-animation 1.2s infinite;
         }
 
+        .paused-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background-color: #ff9a3d;
+            border-radius: 50%;
+        }
+
         @keyframes pulse-animation {
             0% { transform: scale(0.9); opacity: 0.8; }
             50% { transform: scale(1.1); opacity: 1; }
@@ -268,9 +282,11 @@
             }
             
             .btn {
-                flex: 1;
+                flex: 1 1 40%;
+                min-width: 120px;
                 padding: 12px;
                 font-size: 0.95rem;
+                justify-content: center;
             }
         }
     </style>
@@ -279,7 +295,7 @@
     <div class="container">
         <header>
             <h1>ProScreen Recorder</h1>
-            <p class="subtitle">Capture your screen in high quality with audio. Modern, secure, and completely browser-based.</p>
+            <p class="subtitle">Capture your screen with pause/resume functionality. Modern, secure, and browser-based.</p>
         </header>
         
         <section class="preview-section">
@@ -295,9 +311,9 @@
             <div class="status">
                 <div id="statusText">Ready to record</div>
                 <div id="timer" style="display: none;">
-                    <span class="recording-indicator">
-                        <span class="pulse"></span>
-                        Recording
+                    <span id="recordingIndicator" class="recording-indicator">
+                        <span id="statusIcon" class="pulse"></span>
+                        <span id="statusTextRecording">Recording</span>
                     </span> 
                     <span id="timeDisplay">00:00</span>
                 </div>
@@ -305,10 +321,13 @@
             
             <div class="controls">
                 <button id="startBtn" class="btn">
-                    <span>●</span> Start Recording
+                    <span>●</span> Start
+                </button>
+                <button id="pauseResumeBtn" class="btn" disabled>
+                    <span>⏸</span> Pause
                 </button>
                 <button id="stopBtn" class="btn" disabled>
-                    <span>■</span> Stop Recording
+                    <span>■</span> Stop
                 </button>
                 <button id="downloadBtn" class="btn" disabled>
                     <span>↓</span> Download
@@ -344,11 +363,14 @@
             const videoPreview = document.getElementById('previewVideo');
             const previewPlaceholder = document.getElementById('previewPlaceholder');
             const startBtn = document.getElementById('startBtn');
+            const pauseResumeBtn = document.getElementById('pauseResumeBtn');
             const stopBtn = document.getElementById('stopBtn');
             const downloadBtn = document.getElementById('downloadBtn');
             const timerDisplay = document.getElementById('timeDisplay');
             const timerContainer = document.getElementById('timer');
             const statusText = document.getElementById('statusText');
+            const statusTextRecording = document.getElementById('statusTextRecording');
+            const statusIcon = document.getElementById('statusIcon');
             const systemAudioToggle = document.getElementById('systemAudioToggle');
             const microphoneToggle = document.getElementById('microphoneToggle');
             
@@ -356,14 +378,22 @@
             let recordedChunks = [];
             let timerInterval;
             let seconds = 0;
+            let isPaused = false;
+            let isRecording = false;
             let stream;
+            let recordingStartTime;
+            let pausedDuration = 0;
+            let lastPauseTime;
             
             // Update timer display
             function updateTimer() {
-                seconds++;
-                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-                const secs = (seconds % 60).toString().padStart(2, '0');
-                timerDisplay.textContent = `${mins}:${secs}`;
+                if (isRecording && !isPaused) {
+                    const elapsed = Date.now() - recordingStartTime - pausedDuration;
+                    seconds = Math.floor(elapsed / 1000);
+                    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                    const secs = (seconds % 60).toString().padStart(2, '0');
+                    timerDisplay.textContent = `${mins}:${secs}`;
+                }
             }
             
             // Start screen recording
@@ -410,21 +440,33 @@
                         }
                     };
                     
+                    // When recording stops
+                    mediaRecorder.onstop = () => {
+                        // Finalize recording
+                    };
+                    
                     // Start recording
                     mediaRecorder.start(100);
+                    recordingStartTime = Date.now();
+                    pausedDuration = 0;
                     
                     // Update UI
                     startBtn.disabled = true;
+                    pauseResumeBtn.disabled = false;
                     stopBtn.disabled = false;
                     downloadBtn.disabled = true;
                     systemAudioToggle.disabled = true;
                     microphoneToggle.disabled = true;
                     timerContainer.style.display = 'block';
                     statusText.textContent = 'Recording in progress...';
+                    statusIcon.className = 'pulse';
+                    statusTextRecording.textContent = 'Recording';
+                    pauseResumeBtn.innerHTML = '<span>⏸</span> Pause';
                     
                     // Start timer
-                    seconds = 0;
-                    timerInterval = setInterval(updateTimer, 1000);
+                    isRecording = true;
+                    isPaused = false;
+                    timerInterval = setInterval(updateTimer, 100);
                     updateTimer();
                     
                     // Handle when user stops via browser controls
@@ -434,6 +476,39 @@
                 } catch (err) {
                     console.error('Error starting recording:', err);
                     statusText.textContent = 'Error: ' + err.message;
+                }
+            }
+            
+            // Toggle pause/resume
+            function togglePauseResume() {
+                if (!mediaRecorder) return;
+                
+                if (isPaused) {
+                    // Resume recording
+                    mediaRecorder.resume();
+                    isPaused = false;
+                    statusIcon.className = 'pulse';
+                    statusTextRecording.textContent = 'Recording';
+                    pauseResumeBtn.innerHTML = '<span>⏸</span> Pause';
+                    statusText.textContent = 'Recording in progress...';
+                    
+                    // Calculate paused duration
+                    pausedDuration += Date.now() - lastPauseTime;
+                    
+                    // Restart timer updates
+                    timerInterval = setInterval(updateTimer, 100);
+                } else {
+                    // Pause recording
+                    mediaRecorder.pause();
+                    isPaused = true;
+                    statusIcon.className = 'paused-indicator';
+                    statusTextRecording.textContent = 'Paused';
+                    pauseResumeBtn.innerHTML = '<span>▶</span> Resume';
+                    statusText.textContent = 'Recording paused...';
+                    lastPauseTime = Date.now();
+                    
+                    // Stop timer updates while paused
+                    clearInterval(timerInterval);
                 }
             }
             
@@ -448,11 +523,16 @@
                     
                     // Update UI
                     startBtn.disabled = false;
+                    pauseResumeBtn.disabled = true;
                     stopBtn.disabled = true;
                     downloadBtn.disabled = false;
                     systemAudioToggle.disabled = false;
                     microphoneToggle.disabled = false;
                     statusText.textContent = 'Recording complete!';
+                    
+                    // Reset recording state
+                    isRecording = false;
+                    isPaused = false;
                     
                     // Reset preview
                     videoPreview.srcObject = null;
@@ -485,10 +565,12 @@
             
             // Event listeners
             startBtn.addEventListener('click', startRecording);
+            pauseResumeBtn.addEventListener('click', togglePauseResume);
             stopBtn.addEventListener('click', stopRecording);
             downloadBtn.addEventListener('click', downloadRecording);
             
             // Initialize UI state
+            pauseResumeBtn.disabled = true;
             stopBtn.disabled = true;
             downloadBtn.disabled = true;
         });
